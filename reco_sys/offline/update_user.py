@@ -222,3 +222,7 @@ class UpdateUserProfile(SparkSessionBase):
 #     op.update_user_action_basic()
 #     op.update_user_label()
 #     op.update_user_info()
+
+
+# scheduler.add_job(update_user_profile, trigger='interval', hours=2)
+# 添加之后，进行supervisor的update。
