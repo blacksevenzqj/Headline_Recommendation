@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from offline.update_article import UpdateArticle
+from offline.update_user import UpdateUserProfile
 
 
 def update_article_profile():
@@ -14,3 +15,13 @@ def update_article_profile():
         textrank_keywords_df, keywordsIndex = ua.generate_article_label()
         articleProfile = ua.get_article_profile(textrank_keywords_df, keywordsIndex)
         ua.compute_article_similar(articleProfile)
+
+
+def update_user_profile():
+    """
+    更新用户画像
+    """
+    uup = UpdateUserProfile()
+    if uup.update_user_action_basic():
+        uup.update_user_label()
+        uup.update_user_info()
