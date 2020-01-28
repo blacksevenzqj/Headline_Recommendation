@@ -4,7 +4,7 @@ import logging
 import logging.handlers
 import os
 
-logging_file_dir = '/root/logs/'
+logging_file_dir = '/root/toutiao_logs/'
 
 
 def create_logger():
