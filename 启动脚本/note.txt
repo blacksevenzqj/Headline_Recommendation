@@ -1,0 +1,18 @@
+sudo chown -R hadoop:hadoop ./spark
+
+Windows10上的.sh脚本在Linux上处理后才能执行：
+sed -i 's/\r$//' ./*
+
+chmod -R 777 ./*
+
+
+
+https://blog.csdn.net/tang3827738w/article/details/92387650
+vi /etc/profile
+vi /etc/profile.d/*.sh
+vi /etc/bashrc
+vi ~/.bash_profile   SB用的
+vi ~/.bashrc
+
+source ~/.bash_profile
+
