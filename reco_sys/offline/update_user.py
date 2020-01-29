@@ -19,9 +19,10 @@ class UpdateUserProfile(SparkSessionBase):
     """离线相关处理程序
     """
     SPARK_APP_NAME = "updateUser"
+    SPARK_URL = "local"
     ENABLE_HIVE_SUPPORT = True
 
-    SPARK_EXECUTOR_MEMORY = "7g"
+    SPARK_EXECUTOR_MEMORY = "1g"
 
     def __init__(self):
 

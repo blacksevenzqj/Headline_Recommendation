@@ -2,6 +2,7 @@
 
 from offline.update_article import UpdateArticle
 from offline.update_user import UpdateUserProfile
+from offline.update_recall import UpdateRecall
 
 
 def update_article_profile():
@@ -25,3 +26,14 @@ def update_user_profile():
     if uup.update_user_action_basic():
         uup.update_user_label()
         uup.update_user_info()
+
+
+def update_user_recall():
+    '''
+    用户的频道推荐召回结果更新
+    '''
+    ur = UpdateRecall(500)
+    ur.update_als_recall()
+    ur.update_content_recall()
+
+

@@ -21,9 +21,10 @@ class UpdateArticle(SparkSessionBase):
     更新文章画像
     """
     SPARK_APP_NAME = "updateArticle"
+    SPARK_URL = "local"
     ENABLE_HIVE_SUPPORT = True
 
-    SPARK_EXECUTOR_MEMORY = "7g"
+    SPARK_EXECUTOR_MEMORY = "1g"
 
     def __init__(self):
         self.spark = self._create_spark_session()
