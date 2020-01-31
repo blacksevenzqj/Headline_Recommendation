@@ -15,7 +15,7 @@ python3 similar.py
 BASE_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.insert(0, os.path.join(BASE_DIR))
 
-PYSPARK_PYTHON = "/miniconda2/envs/reco_sys/bin/python"
+PYSPARK_PYTHON = "/miniconda2/envs/py365/bin/python"
 # 当存在多个版本时，不指定很可能会导致出错
 os.environ["PYSPARK_PYTHON"] = PYSPARK_PYTHON
 os.environ["PYSPARK_DRIVER_PYTHON"] = PYSPARK_PYTHON

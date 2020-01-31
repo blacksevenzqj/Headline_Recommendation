@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(BASE_DIR))
 sys.path.insert(0, os.path.join(BASE_DIR, "reco_sys"))
 print(sys.path)
 
-PYSPARK_PYTHON = "/miniconda2/envs/reco_sys/bin/python"
+PYSPARK_PYTHON = "/miniconda2/envs/py365/bin/python"
 # 当存在多个版本时，不指定很可能会导致出错
 os.environ["PYSPARK_PYTHON"] = PYSPARK_PYTHON
 os.environ["PYSPARK_DRIVER_PYTHON"] = PYSPARK_PYTHON
