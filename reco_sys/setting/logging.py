@@ -22,3 +22,12 @@ def create_logger():
     log_trace = logging.getLogger('offline')
     log_trace.addHandler(trace_file_handler)
     log_trace.setLevel(logging.INFO)
+
+    # 在线日志打印
+    trace_file_handler = logging.FileHandler(
+        os.path.join(logging_file_dir, 'online.log')
+    )
+    trace_file_handler.setFormatter(logging.Formatter('%(message)s'))
+    log_trace = logging.getLogger('online')
+    log_trace.addHandler(trace_file_handler)
+    log_trace.setLevel(logging.INFO)

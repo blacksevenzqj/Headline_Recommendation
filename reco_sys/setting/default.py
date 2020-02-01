@@ -1,5 +1,20 @@
 # -*- coding: UTF-8 -*-
 
+# 增加spark online 启动配置
+class DefaultConfig(object):
+    """默认的一些配置信息
+    """
+    # 在线计算spark配置
+    SPARK_ONLINE_CONFIG = (
+        ("spark.app.name", "onlineUpdate"),  # 设置启动的spark的app名称，没有提供，将随机产生一个名称
+        ("spark.master", "local[2]"),
+        ("spark.executor.instances", 4)
+    )
+
+    # KAFKA配置
+    KAFKA_SERVER = "192.168.19.137:9092"
+
+
 CHANNEL_INFO = {
             1: "html",
             2: "开发者资讯",
