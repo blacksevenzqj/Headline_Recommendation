@@ -5,3 +5,5 @@
 /root/bigdata/kafka/bin/kafka-server-start.sh /root/bigdata/kafka/config/server.properties
 
 /root/bigdata/kafka/bin/kafka-topics.sh --zookeeper 192.168.19.137:2181 --create --replication-factor 1 --topic click-trace --partitions 1
+
+/root/bigdata/kafka/bin/kafka-topics.sh --zookeeper 192.168.19.137:2181 --create --replication-factor 1 --topic new-article --partitions 1

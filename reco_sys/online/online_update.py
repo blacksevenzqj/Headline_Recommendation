@@ -4,12 +4,14 @@ import os
 import sys
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE_DIR))
-from online import stream_sc, SIMILAR_DS
+from online import stream_sc, SIMILAR_DS, HOT_DS, NEW_ARTICLE_DS
+from setting.default import DefaultConfig
 import json
 import time
 from datetime import datetime
 import setting.logging as lg
 import logging
+import redis
 
 logger = logging.getLogger('online')
 
@@ -21,7 +23,9 @@ class OnlineRecall(object):
     3、在线热门文章召回
     """
     def __init__(self):
-        pass
+        self.client = redis.StrictRedis(host=DefaultConfig.REDIS_HOST,
+                                        port=DefaultConfig.REDIS_PORT,
+                                        db=10)
 
     def _update_content_recall(self):
         '''
@@ -103,10 +107,49 @@ class OnlineRecall(object):
         SIMILAR_DS.map(lambda x: json.loads(x[1])).foreachRDD(get_similar_online_recall)
 
 
+    def _update_hot_redis(self):
+        '''
+        收集用户行为，更新热门文章分数
+        '''
+        client = self.client
+        # {"actionTime":"2019-04-10 21:04:39","readTime":"","channelId":18,"param":{"action": "click", "userId": "2", "articleId": "116644", "algorithmCombine": "C2"}}
+        def updateHotArticle(rdd):
+            for data in rdd.collect():
+                logger.info("{}, INFO: {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), data))
+                # 判断用户操作行为
+                if data['param']['action'] in ['exposure', 'read']:
+                    pass
+                else:
+                    # 注意：Python中redis的jar版本更新为redis-3.4.1，使用如下zincrby的API；如果是老版本，则API不相同。
+                    client.zincrby("ch:{}:hot".format(data['channelId']), 1, data['param']['articleId'])
+
+        HOT_DS.map(lambda x: json.loads(x[1])).foreachRDD(updateHotArticle)
+
+
+    # 黑马头条后台在文章发布之后，会将新文章ID以固定格式（与后台约定）传到KAFKA的new-article topic当中
+    def _update_new_redis(self):
+        """
+        更新频道新文章 new-article
+        """
+        client = self.client
+
+        def computeFunction(rdd):
+            for row in rdd.collect():
+                channel_id, article_id = row.split(',') # 18, 1139
+                logger.info("{}, INFO: get kafka new_article each data:channel_id:{}, article_id:{}".format(
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'), channel_id, article_id))
+                client.zadd("ch:{}:new".format(channel_id), {article_id: time.time()})
+
+        NEW_ARTICLE_DS.map(lambda x: x[1]).foreachRDD(computeFunction)
+
+
+
 if __name__ == '__main__':
     lg.create_logger()
     ore = OnlineRecall()
-    ore._update_content_recall()
+    # ore._update_content_recall()
+    # ore._update_hot_redis()
+    ore._update_new_redis()
     stream_sc.start()
     # 使用 ctrl+c 可以退出服务
     _ONE_DAY_IN_SECONDS = 60 * 60 * 24
