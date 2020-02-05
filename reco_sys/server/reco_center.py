@@ -9,6 +9,8 @@ import hashlib
 from setting.default import RAParam
 from server.utils import HBaseUtils
 from server import pool
+from server.recall_service import ReadRecall
+from server.redis_cache import get_cache_from_redis_hbase
 from datetime import datetime
 import logging
 import json
@@ -84,6 +86,7 @@ class RecoCenter(object):
     """
     def __init__(self):
         self.hbu = HBaseUtils(pool)
+        self.recall_service = ReadRecall()
 
     def feed_recommend_time_stamp_logic(self, temp):
         """
@@ -106,18 +109,19 @@ class RecoCenter(object):
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id, e))
             last_stamp = 0
 
-
         logger.info(str(last_stamp) + "___" + str(temp.time_stamp))
+        # Track的time_stamp字段：上一条历史记录的时间戳（没有赋值为0）
         # 2、如果last_stamp < 用户请求时间戳, 用户的刷新操作
         if last_stamp < temp.time_stamp:
             # 走正常的推荐流程
             # 缓存读取、召回排序流程
-            # last_stamp应该是temp.time_stamp前面一条数据
-            # 返回给用户上一条时间戳给定为last_stamp
-            # 1559148615353
-            temp.time_stamp = last_stamp
-            _track = add_track([], temp)
-            logger.info("My_Log is " + str(_track))
+            res = get_cache_from_redis_hbase(temp, self.hbu)
+            if not res:
+                logger.info("{} INFO cache is Null get user_id:{} channel:{} recall/sort data".format(
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id, e))
+                res = self.user_reco_list(temp)
+            temp.time_stamp = last_stamp # last_stamp应该是temp.time_stamp前面一条数据，返回给用户上一条时间戳last_stamp
+            _track = add_track(res, temp)
         else:
             # 3、如果last_stamp >= 用户请求时间戳, 用户才翻历史记录
             # 根据用户传入的时间戳请求，去读取对应的历史记录
@@ -143,7 +147,7 @@ class RecoCenter(object):
             # 1558236629309, [43997, 14299, 17632, 17120]
 
             # 3步判断逻辑
-            #1、如果没有历史数据，返回时间戳0以及结果空列表
+            # 1、如果没有历史数据，返回时间戳0以及结果空列表
             # 1558236629307
             if not row:
                 temp.time_stamp = 0
@@ -161,14 +165,123 @@ class RecoCenter(object):
             # res bytes--->list
             # list str---> int id
             res = list(map(int, eval(res)))
-
             logger.info(
                 "{} INFO history:{}, {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), res, temp.time_stamp))
-
             _track = add_track(res, temp)
             _track['param'] = ''
 
         return _track
 
 
+    def user_reco_list(self, temp):
+        """
+        用户下拉刷新获取新数据的逻辑
+        1、循环算法组合参数，遍历不同召回结果进行过滤
+        2、过滤当前该请求频道推荐历史结果，如果不是0频道需要过滤0频道推荐结果，防止出现
+        3、过滤之后，推荐出去指定个数的文章列表，写入历史记录history_recommend，剩下的写入待推荐结果wait_recommend。
+        """
+        reco_set = []
+        # 1、循环算法组合参数，遍历不同召回结果进行过滤：
+        '''
+        COMBINE={
+            'Algo-1': (1, [100, 101, 102, 103, 104], []),  # 首页推荐，所有召回结果读取+LR排序
+            'Algo-2': (2, [100, 101, 102, 103, 104], [])  # 首页推荐，所有召回结果读取 排序
+        }
+        '''
+        for _num in RAParam.COMBINE[temp.algo][1]:
+            # 进行每个召回结果的读取100,101,102,103,104
+            if _num == 103:
+                # 新文章召回读取
+                _res = self.recall_service.read_redis_new_article(temp.channel_id)
+                reco_set = list(set(reco_set).union(set(_res))) # 合并召回的结果
+            elif _num == 104:
+                # 热门文章召回读取
+                _res = self.recall_service.read_redis_hot_article(temp.channel_id)
+                reco_set = list(set(reco_set).union(set(_res))) # 合并召回的结果
+            else:
+                # 离线模型ALS召回、离线word2vec的文章画像内容召回、在线word2vec的文章画像内容召回
+                _res = self.recall_service.read_hbase_recall_data(RAParam.RECALL[_num][0],
+                                           'recall:user:{}'.format(temp.user_id).encode(),
+                                           '{}:{}'.format(RAParam.RECALL[_num][1], temp.channel_id).encode())
+                reco_set = list(set(reco_set).union(set(_res)))  # 合并召回的结果
+
+        # 对合并的结果集 进行 history_recommend 过滤
+        history_list = []
+        try:
+            # 所有版本
+            data = self.hbu.get_table_cells('history_recommend',
+                                            'reco:his:{}'.format(temp.user_id).encode(),
+                                            'channel:{}'.format(temp.channel_id).encode())
+            for _ in data:
+                history_list = list(set(history_list).union(set(eval(_))))
+
+            logger.info("{} INFO filter user_id:{} channel:{} history data".format(
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
+        except Exception as e:
+            logger.warning("{} WARN filter history article exception:{}".format(datetime.now().
+                                                                     strftime('%Y-%m-%d %H:%M:%S'), e))
+
+        # 如果0号频道（推荐频道）有历史记录，也需要过滤
+        try:
+            data = self.hbu.get_table_cells('history_recommend',
+                                            'reco:his:{}'.format(temp.user_id).encode(),
+                                            'channel:{}'.format(0).encode())
+            for _ in data:
+                history_list = list(set(history_list).union(set(eval(_))))
+
+            logger.info("{} INFO filter user_id:{} channel:{} history data".format(
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, 0))
+        except Exception as e:
+            logger.warning(
+                "{} WARN filter history article exception:{}".format(datetime.now().
+                                                                     strftime('%Y-%m-%d %H:%M:%S'), e))
+
+        # 过滤操作 reco_set 与 history_list 进行过滤
+        reco_set = list(set(reco_set).difference(set(history_list)))
+        logger.info("{} INFO after filter history is {}".format(
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'), reco_set))
+
+
+        # 如果没有数据，直接返回
+        if not reco_set:
+            return reco_set
+        else:
+            # 排序代码逻辑
+            # _sort_num = RAParam.COMBINE[temp.algo][2][0]
+            # reco_set = sort_dict[RAParam.SORT[_sort_num]](reco_set, temp, self.hbu)
+
+
+            # 类型进行转换
+            reco_set = list(map(int, reco_set))
+
+            # 跟后端需要推荐的文章数量进行比对 article_num
+            # article_num > reco_set
+            if len(reco_set) <= temp.article_num:
+                res = reco_set
+            else:
+                # 截取要推荐的数量
+                res = reco_set[:temp.article_num]
+                # 剩下的推荐结果放入wait_recommend，等待下次刷新时直接推荐
+                self.hbu.get_table_put('wait_recommend',
+                                       'reco:{}'.format(temp.user_id).encode(),
+                                       'channel:{}'.format(temp.channel_id).encode(),
+                                       str(reco_set[temp.article_num:]).encode(),
+                                       timestamp=temp.time_stamp)
+                logger.info(
+                    "{} INFO put user_id:{} channel:{} wait data".format(
+                        datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
+
+
+            # 放入历史记录表当中
+            self.hbu.get_table_put('history_recommend',
+                                   'reco:his:{}'.format(temp.user_id).encode(),
+                                   'channel:{}'.format(temp.channel_id).encode(),
+                                   str(res).encode(),
+                                   timestamp=temp.time_stamp)
+            # 放入历史记录日志
+            logger.info(
+                "{} INFO store recall/sorted user_id:{} channel:{} history_recommend data".format(
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
+
+        return res
 

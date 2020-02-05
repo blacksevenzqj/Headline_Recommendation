@@ -21,7 +21,7 @@ def test():
     req_article.channel_id = 18
     req_article.article_num = 10
     # req_article.time_stamp = int(time.time() * 1000)
-    req_article.time_stamp = 1580736947387
+    req_article.time_stamp = 1580736947389
 
     with grpc.insecure_channel(DefaultConfig.RPC_SERVER) as rpc_cli:
         print('''''')

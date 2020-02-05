@@ -83,6 +83,8 @@ class FeaturePlatform(SparkSessionBase):
                               {"channel:{}".format(j + 1).encode(): str(res[i][1][j]).encode()})
             conn.close()
 
+
+
     def update_article_ctr_feature_to_hbase(self):
         """
         :return:

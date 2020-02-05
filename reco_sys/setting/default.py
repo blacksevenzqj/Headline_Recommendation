@@ -20,6 +20,14 @@ class DefaultConfig(object):
 
     RPC_SERVER = '192.168.19.137:9999'
 
+    # 实时运行spark
+    # SPARK grpc配置
+    SPARK_GRPC_CONFIG = (
+        ("spark.app.name", "grpcSort"),  # 设置启动的spark的app名称，没有提供，将随机产生一个名称
+        ("spark.master", "local"), # yarn
+        ("spark.executor.instances", 4)
+    )
+
 
 from collections import namedtuple
 
@@ -39,10 +47,10 @@ RAParam = param(
     },
     RECALL={
         100: ('cb_recall', 'als'),  # 离线模型ALS召回，recall:user:1115629498121 column=als:18
-        101: ('cb_recall', 'content'),  # 离线word2vec的画像内容召回 'recall:user:5', 'content:1'
-        102: ('cb_recall', 'online'),  # 在线word2vec的画像召回 'recall:user:1', 'online:1'
-        103: 'new_article',  # 新文章召回 redis当中    ch:18:new
-        104: 'popular_article',  # 基于用户协同召回结果 ch:18:hot
+        101: ('cb_recall', 'content'),  # 离线word2vec的文章画像内容召回 'recall:user:5', 'content:1'
+        102: ('cb_recall', 'online'),  # 在线word2vec的文章画像内容召回 'recall:user:1', 'online:1'
+        103: 'new_article',  # 新文章召回redis当中：ch:18:new
+        104: 'popular_article',  # 热门文章召回redis当中：ch:18:hot
         105: ('article_similar', 'similar')  # 文章相似推荐结果 '1' 'similar:2'
     },
     SORT={
