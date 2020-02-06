@@ -11,11 +11,16 @@ from server.utils import HBaseUtils
 from server import pool
 from server.recall_service import ReadRecall
 from server.redis_cache import get_cache_from_redis_hbase
+from server.sort_service import lr_sort_service
 from datetime import datetime
 import logging
 import json
 
 logger = logging.getLogger('recommend')
+
+sort_dict = {
+    'LR': lr_sort_service,
+}
 
 '''
 {
@@ -247,9 +252,8 @@ class RecoCenter(object):
             return reco_set
         else:
             # 排序代码逻辑
-            # _sort_num = RAParam.COMBINE[temp.algo][2][0]
-            # reco_set = sort_dict[RAParam.SORT[_sort_num]](reco_set, temp, self.hbu)
-
+            _sort_num = RAParam.COMBINE[temp.algo][2][0] # 排序模型列表 中 索引出 排序模型编号
+            reco_set = sort_dict[RAParam.SORT[_sort_num]](reco_set, temp, self.hbu)
 
             # 类型进行转换
             reco_set = list(map(int, reco_set))
