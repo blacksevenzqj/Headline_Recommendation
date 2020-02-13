@@ -1,6 +1,11 @@
+# -*- coding: UTF-8 -*-
+
 import tensorflow as tf
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+
+# tensorflow1的版本
+print(tf.__version__)
 
 
 def tensorflow_demo():

@@ -1,9 +1,14 @@
 # -*- coding: UTF-8 -*-
 
+import numpy as np
 import tensorflow as tf
 import functools
 
+# tensorflow1的版本
+print(tf.__version__)
 
+
+# In[]:
 _CSV_COLUMN_DEFAULTS = [[0], [''], [0], [''], [0], [''], [''], [''], [''], [''],
                         [0], [0], [0], [''], ['']]
 
@@ -25,11 +30,10 @@ def input_func(file, epoches, batch_size):
     :return:
     """
     def deal_with_csv(value):
-        data = tf.decode_csv(value, record_defaults=_CSV_COLUMN_DEFAULTS)
-
+        data = tf.decode_csv(value, record_defaults=_CSV_COLUMN_DEFAULTS) # list
         # 构建列名称与这一行值的字典数据
         feature_dict = dict(zip(_CSV_COLUMNS, data))
-        labels = feature_dict.pop('income_bracket')
+        labels = feature_dict.pop('income_bracket') # Tensor("DecodeCSV:14", shape=(), dtype=string)
         classes = tf.equal(labels, '>50K')
         return feature_dict, classes
 
@@ -37,10 +41,11 @@ def input_func(file, epoches, batch_size):
     # tensor的迭代，一行样本数据
     # 名称要制定
     # 39,State-gov,77516,Bachelors,13,,Adm-clerical
-    dataset = tf.data.TextLineDataset(file)
-    dataset = dataset.map(deal_with_csv)
-    # dataset， 包含了feature_dict, classes， 迭代器
-    dataset = dataset.repeat(epoches)
+    dataset = tf.data.TextLineDataset(file) # DatasetV1Adapter 理解为Tensor迭代器
+    print(dataset)
+    dataset = dataset.map(deal_with_csv) # 只调用了一次，包含了feature_dict, classes
+    print(dataset)
+    dataset = dataset.repeat(epoches) # 训练时重复次数
     dataset = dataset.batch(batch_size)
     return dataset
 
@@ -85,35 +90,83 @@ def get_feature_column():
     return numeric_columns + categorical_columns
 
 
+
+def parser(a):
+    features = {"feature": a[:, 0:9]}
+    y = a[:, 9]
+    return features, y
+
 def test():
     """
     API测试
     :return:
     """
-    dataset1 = tf.data.Dataset.from_tensor_slices(tf.random_normal([4, 10]))
-    print(dataset1.output_shapes)
+    a = tf.random_normal([4, 10])
+    print(a.shape, a.shape.as_list()) # a.ndim错误API
+    print(a)
+    dataset1 = tf.data.Dataset.from_tensor_slices(a)
+    print(dataset1.output_shapes) # 取出的是一个Dataset
     print(dataset1.output_types)
-    # 2
+    dataset1 = dataset1.shuffle(buffer_size=100)
+    dataset1 = dataset1.batch(2) # 一次取2行数据
+    dataset1 = dataset1.map(parser)
+    dataset1 = dataset1.repeat()
+    print(dataset1)
+    
+    iterator = dataset1.make_initializable_iterator()
+    next_element = iterator.get_next()
+    with tf.Session() as sess:
+        sess.run(iterator.initializer)
+        for i in range(2):
+            print(sess.run(next_element)) # 一次取2行数据，取了2次
+    
+    print("-"*30)
+    
+    
     dataset2 = tf.data.Dataset.from_tensor_slices({"f": tf.random_normal([4, 10]),
-                                                   "l": tf.random_normal([4])})
-    print(dataset2.output_shapes)
+                                                    "l": tf.random_normal([4])})
+    print(dataset2.output_shapes) # 取出的是一个Dataset
     print(dataset2.output_types)
+    print("-"*30)
 
-    # 3,给一个值
-    # dataset2.make_initializable_iterator
-    dataset3 = tf.data.Dataset.range(100)
-    iterator = dataset3.make_one_shot_iterator()
+
+    dataset3 = tf.data.Dataset.range(100) # 给一个值
+    iterator = dataset3.make_one_shot_iterator() # 不常用 dataset3.make_initializable_iterator
     example = iterator.get_next()
-
     with tf.Session() as sess:
         for i in range(10):
             print(sess.run(example))
+    print("-"*30)
+    
+    
+    features = {'SepalLength': np.array([6.4, 5.0]),
+              'SepalWidth':  np.array([2.8, 2.3]),
+              'PetalLength': np.array([5.6, 3.3]),
+              'PetalWidth':  np.array([2.2, 1.0])}
+     
+    labels = np.array([2, 1])
+    
+    dataset = tf.data.Dataset.from_tensor_slices((features, labels))
+    dataset = dataset.shuffle(1000).repeat().batch(2) # 一次取2行数据
+    print(dataset)
+    example = dataset.make_one_shot_iterator().get_next()
+    with tf.Session() as sess:
+            for i in range(4):
+                print(sess.run(example)) # 一次取2行数据，取了4次
+    print("-"*30)
+
+
 
 
 if __name__ == '__main__':
-    dataset = input_func(train_file, 3, 32)
+    import sys
+    print(sys.version)
+    print(sys.version_info)
+
+    # dataset = input_func(train_file, 3, 32)
+    
+    # # 特征列：
     # feature_cl = get_feature_column()
-    #
     # # 构造模型
     # classifiry = tf.estimator.LinearClassifier(feature_columns=feature_cl)
     # # train输入的input_func，不能调用传入
@@ -125,5 +178,4 @@ if __name__ == '__main__':
     # result = classifiry.evaluate(test_func)
     # print(result)
 
-    # test()
-    # test()
+    test()
