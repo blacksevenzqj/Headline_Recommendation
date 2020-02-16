@@ -90,6 +90,53 @@ def get_feature_column():
     return numeric_columns + categorical_columns
 
 
+'''
+特征交叉（连续特征分桶之后进行特征组合）
+'''
+def get_feature_column_v2():
+    age = tf.feature_column.numeric_column('age')
+    education_num = tf.feature_column.numeric_column('education_num')
+    capital_gain = tf.feature_column.numeric_column('capital_gain')
+    capital_loss = tf.feature_column.numeric_column('capital_loss')
+    hours_per_week = tf.feature_column.numeric_column('hours_per_week')
+
+    numeric_columns = [age, education_num, capital_gain, capital_loss, hours_per_week]
+
+    # 类别型特征
+    # categorical_column_with_vocabulary_list, 将字符串转换成ID
+    relationship = tf.feature_column.categorical_column_with_vocabulary_list(
+        'relationship',
+        ['Husband', 'Not-in-family', 'Wife', 'Own-child', 'Unmarried', 'Other-relative'])
+
+    marital_status = tf.feature_column.categorical_column_with_vocabulary_list(
+        'marital_status', [
+            'Married-civ-spouse', 'Divorced', 'Married-spouse-absent',
+            'Never-married', 'Separated', 'Married-AF-spouse', 'Widowed'])
+
+    workclass = tf.feature_column.categorical_column_with_vocabulary_list(
+        'workclass', [
+            'Self-emp-not-inc', 'Private', 'State-gov', 'Federal-gov',
+            'Local-gov', '?', 'Self-emp-inc', 'Without-pay', 'Never-worked'])
+
+    # categorical_column_with_hash_bucket--->哈希列
+    # 对不确定类别数量以及字符时，哈希列进行分桶
+    occupation = tf.feature_column.categorical_column_with_hash_bucket(
+        'occupation', hash_bucket_size=1000)
+    categorical_columns = [relationship, marital_status, workclass, occupation]
+
+    # 分桶，交叉特征
+    age_buckets = tf.feature_column.bucketized_column(
+        age, boundaries=[18, 25, 30, 35, 40, 45, 50, 55, 60, 65])
+    crossed_columns = [
+        tf.feature_column.crossed_column(
+            ['education', 'occupation'], hash_bucket_size=1000),
+        tf.feature_column.crossed_column(
+            [age_buckets, 'education', 'occupation'], hash_bucket_size=1000),
+    ]
+
+    return numeric_columns + categorical_columns + crossed_columns
+
+
 
 def parser(a):
     features = {"feature": a[:, 0:9]}
@@ -157,6 +204,44 @@ def test():
 
 
 
+def version1():
+    # 特征列：
+    feature_cl = get_feature_column()
+    # 构造模型
+    classifiry = tf.estimator.LinearClassifier(feature_columns=feature_cl)
+    # train输入的input_func，不能调用传入
+    # 1、input_func，构造的时候不加参数，但是这样不灵活， 里面参数不能固定的时候
+    # 2、functools.partial
+    train_func = functools.partial(input_func, train_file, epoches=3, batch_size=32)
+    test_func = functools.partial(input_func, test_file, epoches=1, batch_size=32)
+    classifiry.train(train_func)
+    result = classifiry.evaluate(test_func)
+    print(result)
+
+
+def version2():
+    # 分桶与特征交叉
+    # 构造模型
+    feature_v2 = get_feature_column_v2()
+    # classifiry = tf.estimator.LinearClassifier(feature_columns=feature_v2)
+    # 加入正则化项
+    classifiry = tf.estimator.LinearClassifier(feature_columns=feature_v2,
+                                               optimizer=tf.train.FtrlOptimizer(
+                                                   learning_rate=0.01,
+                                                   l1_regularization_strength=10,
+                                                   l2_regularization_strength=15,
+                                               ))
+
+    # train输入的input_func，不能调用传入
+    # 1、input_func，构造的时候不加参数，但是这样不灵活， 里面参数不能固定的时候
+    # 2、functools.partial
+    train_func = functools.partial(input_func, train_file, epoches=3, batch_size=32)
+    test_func = functools.partial(input_func, test_file, epoches=1, batch_size=32)
+    classifiry.train(train_func)
+    result = classifiry.evaluate(test_func)
+    print(result)
+
+
 
 if __name__ == '__main__':
     import sys
@@ -164,18 +249,9 @@ if __name__ == '__main__':
     print(sys.version_info)
 
     # dataset = input_func(train_file, 3, 32)
-    
-    # # 特征列：
-    # feature_cl = get_feature_column()
-    # # 构造模型
-    # classifiry = tf.estimator.LinearClassifier(feature_columns=feature_cl)
-    # # train输入的input_func，不能调用传入
-    # # 1、input_func，构造的时候不加参数，但是这样不灵活， 里面参数不能固定的时候
-    # # 2、functools.partial
-    # train_func = functools.partial(input_func, train_file, epoches=3, batch_size=32)
-    # test_func = functools.partial(input_func, test_file, epoches=1, batch_size=32)
-    # classifiry.train(train_func)
-    # result = classifiry.evaluate(test_func)
-    # print(result)
+
+    # version1()
+
+    # version2()
 
     test()
