@@ -9,14 +9,14 @@
 #        --m 4 \
 #        --target-dir /user/hive/warehouse/toutiao.db/user_profile \
 #        --incremental lastmodified \
-#        --check-column update_time \
-#        --merge-key user_id \
+#        --check-column update_time \    # Mysql的更新时间字段
+#        --merge-key user_id \   # Mysql的主键
 #        --last-value "2018-01-01 00:00:00"
-#
-#
-#
 
-# 多个文章相似导入
+
+
+# 一、增量导入：导入到HDFS中（手动创建HIVE表与之关联）
+# 1、用户表：user_profile、user_basic；2、文章表：news_channel
 time=`date +"%Y-%m-%d" -d "-1day"`
 declare -A check
 check=([user_profile]=update_time [user_basic]=last_login [news_channel]=update_time)
@@ -38,7 +38,8 @@ do
         --last-value ${time}
 done
 
-# news_article_basic
+
+# 2、文章表：news_article_basic 注意特殊字符处理，所以单独拉出来
 sqoop import \
     --connect jdbc:mysql://192.168.19.137/toutiao?tinyInt1isBit=false \
     --username root \
@@ -53,7 +54,9 @@ sqoop import \
     --last-value ${time}
 
 
-# 全量导入表
+
+# 二、全量导入：直接导入到Hive表中（不需要手动创建HIVE表，会自动创建HIVE表）
+# 1、文章表：news_article_content，由于news_article_content文章内容表中含有过多特殊字符，选择直接全量导入
 sqoop import \
     --connect jdbc:mysql://192.168.19.137/toutiao \
     --username root \
