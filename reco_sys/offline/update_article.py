@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE_DIR))
 from offline import SparkSessionBase
@@ -71,6 +72,7 @@ class UpdateArticle(SparkSessionBase):
 
         return _keywordsByTFIDF
 
+
     def merge_article_data(self):
         """
         合并业务中增量更新的文章数据
@@ -116,6 +118,7 @@ class UpdateArticle(SparkSessionBase):
         sentence_df.write.insertInto("article_data")
         return sentence_df
 
+
     def generate_article_label(self, sentence_df):
         """
         生成文章标签  tfidf, textrank
@@ -129,6 +132,7 @@ class UpdateArticle(SparkSessionBase):
 
         # 1、保存所有的词的idf的值，利用idf中的词的标签索引
         # 工具与业务隔离
+        # 计算TF-IDF
         _keywordsByTFIDF = UpdateArticle.compute_keywords_tfidf_topk(words_df, cv_model, idf_model)
 
         keywordsIndex = self.spark.sql("select keyword, index idx from idf_keywords_values")
@@ -152,6 +156,7 @@ class UpdateArticle(SparkSessionBase):
         logger.info("INFO: compute tfidf textrank complete")
 
         return textrank_keywords_df, keywordsIndex
+
 
     def get_article_profile(self, textrank, keywordsIndex):
         """
@@ -203,12 +208,11 @@ class UpdateArticle(SparkSessionBase):
 
         return articleProfile
 
+
     def compute_article_similar(self, articleProfile):
         """
         计算增量文章与历史文章的相似度 word2vec
-        :return:
         """
-
         # 得到要更新的新文章通道类别(不采用)
         # all_channel = set(articleProfile.rdd.map(lambda x: x.channel_id).collect())
         def avg(row):
@@ -288,8 +292,11 @@ class UpdateArticle(SparkSessionBase):
 
             similar.foreachPartition(save_hbase)
 
+
+# main只是测试代码时有用
 # if __name__ == '__main__':
 #     ua = UpdateArticle()
+#     # 先合并数据
 #     sentence_df = ua.merge_article_data()
 #     if sentence_df.rdd.collect():
 #         rank, idf = ua.generate_article_label(sentence_df)

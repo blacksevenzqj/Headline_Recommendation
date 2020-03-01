@@ -9,7 +9,6 @@ from offline.update_feature import FeaturePlatform
 def update_article_profile():
     """
     定时更新文章画像的运行逻辑
-    :return:
     """
     ua = UpdateArticle()
     sentence_df = ua.merge_article_data()
