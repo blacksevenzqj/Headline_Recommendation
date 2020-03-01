@@ -151,6 +151,7 @@ class UpdateArticle(SparkSessionBase):
         # 计算textrank
         textrank_keywords_df = sentence_df.rdd.mapPartitions(textrank).toDF(
             ["article_id", "channel_id", "keyword", "textrank"])
+
         textrank_keywords_df.write.insertInto("textrank_keywords_values")
 
         logger.info("INFO: compute tfidf textrank complete")
@@ -177,12 +178,14 @@ class UpdateArticle(SparkSessionBase):
         _articleKeywordsWeights.registerTempTable("temptable")
         articleKeywordsWeights = self.spark.sql(
             "select article_id, min(channel_id) channel_id, collect_list(keyword) keyword_list, collect_list(weights) weights_list from temptable group by article_id")
+
         def _func(row):
             return row.article_id, row.channel_id, dict(zip(row.keyword_list, row.weights_list))
+
         articleKeywords = articleKeywordsWeights.rdd.map(_func).toDF(["article_id", "channel_id", "keywords"])
 
         # 2、主题词
-        # 将tfidf和textrank共现的词作为主题词
+        # 将tfidf和textrank共现的词作为主题词（这里使用全量查询）
         topic_sql = """
                 select t.article_id article_id2, collect_set(t.keyword) topics from tfidf_keywords_values t
                 inner join 
@@ -196,6 +199,7 @@ class UpdateArticle(SparkSessionBase):
         articleProfile = articleKeywords.join(articleTopics,
                                               articleKeywords.article_id == articleTopics.article_id2).select(
             ["article_id", "channel_id", "keywords", "topics"])
+
         articleProfile.write.insertInto("article_profile")
 
         del keywordsIndex
@@ -293,11 +297,11 @@ class UpdateArticle(SparkSessionBase):
             similar.foreachPartition(save_hbase)
 
 
-# main只是测试代码时有用
-# if __name__ == '__main__':
-#     ua = UpdateArticle()
-#     # 先合并数据
-#     sentence_df = ua.merge_article_data()
-#     if sentence_df.rdd.collect():
-#         rank, idf = ua.generate_article_label(sentence_df)
-#         articleProfile = ua.get_article_profile(rank, idf)
+main只是测试代码时有用
+if __name__ == '__main__':
+    ua = UpdateArticle()
+    # 先合并数据
+    sentence_df = ua.merge_article_data()
+    if sentence_df.rdd.collect():
+        rank, idf = ua.generate_article_label(sentence_df)
+        articleProfile = ua.get_article_profile(rank, idf)
