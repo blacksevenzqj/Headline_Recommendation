@@ -226,9 +226,11 @@ class UpdateArticle(SparkSessionBase):
             #  将平均向量作为article的向量
             return row.article_id, row.channel_id, x / len(row.vectors)
 
+        # 对于增量数据articleProfile，针对每个频道都进行操作
         for channel_id, channel_name in CHANNEL_INFO.items():
-
+            # 应该有个判断是否有数据，没有则continue
             profile = articleProfile.filter('channel_id = {}'.format(channel_id))
+
             wv_model = Word2VecModel.load(
                 "hdfs://hadoop-master:9000/headlines/models/channel_%d_%s.word2vec" % (channel_id, channel_name))
             vectors = wv_model.getVectors()
@@ -297,11 +299,11 @@ class UpdateArticle(SparkSessionBase):
             similar.foreachPartition(save_hbase)
 
 
-main只是测试代码时有用
-if __name__ == '__main__':
-    ua = UpdateArticle()
-    # 先合并数据
-    sentence_df = ua.merge_article_data()
-    if sentence_df.rdd.collect():
-        rank, idf = ua.generate_article_label(sentence_df)
-        articleProfile = ua.get_article_profile(rank, idf)
+# main只是测试代码时有用
+# if __name__ == '__main__':
+#     ua = UpdateArticle()
+#     # 先合并数据
+#     sentence_df = ua.merge_article_data()
+#     if sentence_df.rdd.collect():
+#         rank, idf = ua.generate_article_label(sentence_df)
+#         articleProfile = ua.get_article_profile(rank, idf)
