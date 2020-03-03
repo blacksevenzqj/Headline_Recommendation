@@ -35,8 +35,7 @@ class UpdateUserProfile(SparkSessionBase):
 
     def update_user_action_basic(self):
         """
-        更新用户行为日志到用户行为基础标签表
-        :return:
+        更新 用户行为日志表 到 用户行为基础标签表
         """
         # 1、读取日志数据进行处理到基础数据表
         self.spark.sql("use profile")
@@ -220,7 +219,7 @@ class UpdateUserProfile(SparkSessionBase):
 
 # if __name__ == '__main__':
 #     op = UpdateUserProfile()
-#     op.update_user_action_basic()
-#     op.update_user_label()
-#     op.update_user_info()
+#     if op.update_user_action_basic():
+#         op.update_user_label()
+#         op.update_user_info()
 
