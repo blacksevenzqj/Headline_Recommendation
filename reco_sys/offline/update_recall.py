@@ -30,7 +30,6 @@ class UpdateRecall(SparkSessionBase):
     def update_als_recall(self):
         """
         更新基于模型（ALS）的协同过滤召回集
-        :return:
         """
         # 读取用户行为基本表
         self.spark.sql("use profile")
@@ -148,7 +147,6 @@ class UpdateRecall(SparkSessionBase):
     def update_content_recall(self):
         """
         更新基于内容（画像）的推荐召回集, word2vec相似
-        :return:
         """
         # 基于内容相似召回（画像召回）
         ur.spark.sql("use profile")
@@ -209,7 +207,7 @@ class UpdateRecall(SparkSessionBase):
         user_article_basic.foreachPartition(save_content_filter_history_to__recall)
 
 
-if __name__ == '__main__':
-    ur = UpdateRecall(500)
-    ur.update_als_recall()
-    ur.update_content_recall()
+# if __name__ == '__main__':
+#     ur = UpdateRecall(500)
+#     ur.update_als_recall()
+#     ur.update_content_recall()
