@@ -29,9 +29,6 @@ class FeaturePlatform(SparkSessionBase):
         self.spark = self._create_spark_hbase()
 
     def update_user_ctr_feature_to_hbase(self):
-        """
-        :return:
-        """
         clr.spark.sql("use profile")
 
         user_profile_hbase = self.spark.sql(
