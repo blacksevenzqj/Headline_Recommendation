@@ -21,8 +21,8 @@ class OnlineRecall(object):
     '''
     在线计算部分
     1、在线内容召回，实时写入用户点击或者操作文章的相似文章
-    2、在线新文章召回
-    3、在线热门文章召回
+    2、在线热门文章召回
+    3、在线新文章召回
     '''
     def __init__(self):
         self.client = redis.StrictRedis(host=DefaultConfig.REDIS_HOST,
@@ -107,7 +107,7 @@ class OnlineRecall(object):
 
 
 
-    # 3、在线热门文章召回
+    # 2、在线热门文章召回
     def _update_hot_redis(self):
         '''
         收集用户行为，更新热门文章分数
@@ -117,7 +117,7 @@ class OnlineRecall(object):
         def updateHotArticle(rdd):
             for data in rdd.collect():
                 logger.info("{}, INFO: {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), data))
-                # 判断用户操作行为
+                # 判断用户操作行为：exposure曝光、read读完返回记录阅读时间 行为 就跳过。
                 if data['param']['action'] in ['exposure', 'read']:
                     pass
                 else:
@@ -128,7 +128,7 @@ class OnlineRecall(object):
 
 
 
-    # 2、在线新文章召回
+    # 3、在线新文章召回
     # 黑马头条后台在文章发布之后，会将新文章ID以固定格式（与后台约定）传到KAFKA的new-article topic当中
     def _update_new_redis(self):
         """
