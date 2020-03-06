@@ -144,6 +144,8 @@ class UpdateRecall(SparkSessionBase):
 
         als_recall.foreachPartition(save_offline_recall_hbase)
 
+
+
     def update_content_recall(self):
         """
         更新基于内容（画像）的推荐召回集, word2vec相似
@@ -205,6 +207,7 @@ class UpdateRecall(SparkSessionBase):
                 conn.close()
 
         user_article_basic.foreachPartition(save_content_filter_history_to__recall)
+
 
 
 # if __name__ == '__main__':

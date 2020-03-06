@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE_DIR))
 from online import stream_sc, SIMILAR_DS, HOT_DS, NEW_ARTICLE_DS
@@ -17,31 +18,26 @@ logger = logging.getLogger('online')
 
 
 class OnlineRecall(object):
-    """在线计算部分
+    '''
+    在线计算部分
     1、在线内容召回，实时写入用户点击或者操作文章的相似文章
     2、在线新文章召回
     3、在线热门文章召回
-    """
+    '''
     def __init__(self):
         self.client = redis.StrictRedis(host=DefaultConfig.REDIS_HOST,
                                         port=DefaultConfig.REDIS_PORT,
                                         db=10)
 
+    # 1、在线内容召回，实时写入用户点击或者操作文章的相似文章
     def _update_content_recall(self):
-        '''
-        在线内容召回计算
-        '''
         # {"actionTime":"2019-04-10 21:04:39","readTime":"","channelId":18,"param":{"action": "click", "userId": "2", "articleId": "116644", "algorithmCombine": "C2"}}
-        # x [,'json.....']
         def get_similar_online_recall(rdd):
             import happybase
             pool = happybase.ConnectionPool(size=10, host='hadoop-master', port=9090)
-            '''
-            解析rdd中的内容，然后进行获取计算
-            '''
+            # 解析rdd中的内容，然后进行获取计算
             # rdd的[row(1,2,3), row(4,5,6)] -----> rdd.collect()的[[1,2,3], [4,5,6]]
             for data in rdd.collect():
-
                 # 进行data字典处理过滤
                 if data['param']['action'] in ["click", "collect", "share"]:
                     logger.info("{} INFO: get user_id:{} action:{}  log".format(
@@ -64,7 +60,7 @@ class OnlineRecall(object):
                             logger.info("topKSimIds is " + str(topKSimIds))
                             # [6, 5, 4, 2, 8, 3, 1]
 
-                            # 根据历史推荐集过滤，已经给用户推荐过的文章
+                            # 根据历史推荐集history_recall进行过滤（已经给用户推荐过的文章）
                             history_table = conn.table("history_recall")
 
                             _history_data = history_table.cells(
@@ -103,10 +99,15 @@ class OnlineRecall(object):
                         conn.close()
                         logger.info("-"*30)
 
-        # x可以是多次点击行为数据，同时拿到多条数据
+        # x可以是多次点击行为数据，同时拿到多条数据。x为[,'json.....']列表，取x[1]为json字符串，json.loads(x[1])转换为字典。
+        # DStream中的foreachRDD算子不会即使进行处理，所以foreachRDD的函数中可以使用foreach、foreachPartition、collect算子来触发action操作。
+        # foreachRDD迭代的是RDD，那么每个RDD还要再迭代才能拿到RDD中的数据。
+        # 每条数据：{"actionTime":"2019-04-10 21:04:39","readTime":"","channelId":18,"param":{"action": "click", "userId": "2", "articleId": "116644", "algorithmCombine": "C2"}}
         SIMILAR_DS.map(lambda x: json.loads(x[1])).foreachRDD(get_similar_online_recall)
 
 
+
+    # 3、在线热门文章召回
     def _update_hot_redis(self):
         '''
         收集用户行为，更新热门文章分数
@@ -126,6 +127,8 @@ class OnlineRecall(object):
         HOT_DS.map(lambda x: json.loads(x[1])).foreachRDD(updateHotArticle)
 
 
+
+    # 2、在线新文章召回
     # 黑马头条后台在文章发布之后，会将新文章ID以固定格式（与后台约定）传到KAFKA的new-article topic当中
     def _update_new_redis(self):
         """
