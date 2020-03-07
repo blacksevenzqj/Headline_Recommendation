@@ -31,7 +31,6 @@ class DefaultConfig(object):
 
 from collections import namedtuple
 
-# abtest参数信息
 # ABTest参数
 param = namedtuple('RecommendAlgorithm', ['COMBINE',
                                           'RECALL',

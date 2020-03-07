@@ -30,6 +30,11 @@ def feed_recommend(user_id, channel_id, article_num, time_stamp):
     :param article_num:推荐文章个数
     :return: track:埋点参数结果: 参考上面埋点参数组合
     """
+
+    #  产品前期推荐由于较少的点击行为，所以去做 用户冷启动 + 文章冷启动
+    # 用户冷启动：'推荐'频道：热门频道的召回+用户实时行为画像召回（在线的不保存画像）  'C2'组合
+    #              其它 频道：热门召回 + 新文章召回   'C1'组合
+    # 定义返回参数的类
     class TempParam(object):
         user_id = -10
         channel_id = -10
@@ -49,18 +54,21 @@ def feed_recommend(user_id, channel_id, article_num, time_stamp):
     if temp.user_id == "":
         return add_track([], temp)
 
-    # ID为正常
+    # ABTest分流（用户分桶）：用户名md5加密之后取首字母在 default.py→RAParam.BYPASS 设置的哪个桶区间中
     code = hashlib.md5(temp.user_id.encode()).hexdigest()[:1]
     if code in RAParam.BYPASS[0]['Bucket']:
-        temp.algo = RAParam.BYPASS[0]['Strategy']
+        temp.algo = RAParam.BYPASS[0]['Strategy'] # 设置算法名称
     else:
-        temp.algo = RAParam.BYPASS[1]['Strategy']
+        temp.algo = RAParam.BYPASS[1]['Strategy'] # 设置算法名称
 
+    # 推荐服务中心推荐结果
+    # track = add_track([], temp) # (这里做测试，直接构建结果)
     _track = RecoCenter().feed_recommend_time_stamp_logic(temp)
 
     return _track
 
 
+# 需自定义实现：
 class UserRecommendServicer(user_reco_pb2_grpc.UserRecommendServicer):
     """grpc黑马推荐接口服务端逻辑写
     """
@@ -89,8 +97,6 @@ class UserRecommendServicer(user_reco_pb2_grpc.UserRecommendServicer):
         '''
 
         # 3、将参数进行grpc消息体封装，返回
-        # 封装parma1
-        # [(article_id, params), (article_id, params),(article_id, params),(article_id, params)]
         _reco = []
         for d in _track['recommends']:
             # 封装param2的消息体
@@ -100,9 +106,11 @@ class UserRecommendServicer(user_reco_pb2_grpc.UserRecommendServicer):
                                            read=d['param']['read'])
 
             # 封装param1的消息体
+            # [(article_id, params), (article_id, params),(article_id, params),(article_id, params)]
             _param1 = user_reco_pb2.param1(article_id=d['article_id'], params=_param2)
             _reco.append(_param1)
 
+        # 写代码时，从后往前推
         return user_reco_pb2.Track(exposure=_track['param'], recommends=_reco, time_stamp=_track['timestamp'])
 
 
