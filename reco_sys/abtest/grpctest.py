@@ -20,7 +20,7 @@ def test():
     req_article.user_id = '1'
     req_article.channel_id = 18
     req_article.article_num = 10
-    # req_article.time_stamp = int(time.time() * 1000)
+    # req_article.time_stamp = int(time.time() * 1000) # HBase存储的时间戳是13位的，所以要 * 1000
     req_article.time_stamp = 1580736947389
 
     with grpc.insecure_channel(DefaultConfig.RPC_SERVER) as rpc_cli:
@@ -34,35 +34,35 @@ def test():
         else:
 
             # 解析返回结果参数
-            article_dict['exposure_param'] = resp.exposure
+            article_dict['param'] = resp.exposure # 埋点参数参考 中的 曝光参数
 
-            reco_arts = resp.recommends
+            reco_arts = resp.recommends # 埋点参数参考 中的 推荐列表参数
 
             reco_art_param = []
             reco_list = []
             for art in reco_arts:
                 reco_art_param.append({
                     'artcle_id': art.article_id,
-                    'params': {
+                    'param': {
                         'click': art.params.click,
                         'collect': art.params.collect,
                         'share': art.params.share,
                         'read': art.params.read
                     }
                 })
-
                 reco_list.append(art.article_id)
-            article_dict['param'] = reco_art_param
+            article_dict['recommends'] = reco_art_param
 
             # 文章列表以及参数（曝光参数 以及 每篇文章的点击等参数）
             print(reco_list, article_dict)
 
             '''
-            {'exposure_param': '', 
-                'param': [
-                    {'artcle_id': 17283, 'params': {'click': '{"action": "click", "userId": "1", "articleId": "17283", "algorithmCombine": "Algo-1"}', 'collect': '{"action": "collect", "userId": "1", "articleId": "17283", "algorithmCombine": "Algo-1"}', 'share': '{"action": "share", "userId": "1", "articleId": "17283", "algorithmCombine": "Algo-1"}', 'read': '{"action": "read", "userId": "1", "articleId": "17283", "algorithmCombine": "Algo-1"}'}}, 
-                    {'artcle_id': 140357, 'params': {'click': '{"action": "click", "userId": "1", "articleId": "140357", "algorithmCombine": "Algo-1"}', 'collect': '{"action": "collect", "userId": "1", "articleId": "140357", "algorithmCombine": "Algo-1"}', 'share': '{"action": "share", "userId": "1", "articleId": "140357", "algorithmCombine": "Algo-1"}', 'read': '{"action": "read", "userId": "1", "articleId": "140357", "algorithmCombine": "Algo-1"}'}}, 
-                    {'artcle_id': 14668, 'params': {'click': '{"action": "click", "userId": "1", "articleId": "14668", "algorithmCombine": "Algo-1"}', 'collect': '{"action": "collect", "userId": "1", "articleId": "14668", "algorithmCombine": "Algo-1"}', 'share': '{"action": "share", "userId": "1", "articleId": "14668", "algorithmCombine": "Algo-1"}', 'read': '{"action": "read", "userId": "1", "articleId": "14668", "algorithmCombine": "Algo-1"}'}}
+            {
+                'param': '',  # 埋点参数参考 中的 曝光参数
+                'recommends': [  # 埋点参数参考 中的 推荐列表参数
+                    {'artcle_id': 17283, 'param': {'click': '{"action": "click", "userId": "1", "articleId": "17283", "algorithmCombine": "Algo-1"}', 'collect': '{"action": "collect", "userId": "1", "articleId": "17283", "algorithmCombine": "Algo-1"}', 'share': '{"action": "share", "userId": "1", "articleId": "17283", "algorithmCombine": "Algo-1"}', 'read': '{"action": "read", "userId": "1", "articleId": "17283", "algorithmCombine": "Algo-1"}'}}, 
+                    {'artcle_id': 140357, 'param': {'click': '{"action": "click", "userId": "1", "articleId": "140357", "algorithmCombine": "Algo-1"}', 'collect': '{"action": "collect", "userId": "1", "articleId": "140357", "algorithmCombine": "Algo-1"}', 'share': '{"action": "share", "userId": "1", "articleId": "140357", "algorithmCombine": "Algo-1"}', 'read': '{"action": "read", "userId": "1", "articleId": "140357", "algorithmCombine": "Algo-1"}'}}, 
+                    {'artcle_id': 14668, 'param': {'click': '{"action": "click", "userId": "1", "articleId": "14668", "algorithmCombine": "Algo-1"}', 'collect': '{"action": "collect", "userId": "1", "articleId": "14668", "algorithmCombine": "Algo-1"}', 'share': '{"action": "share", "userId": "1", "articleId": "14668", "algorithmCombine": "Algo-1"}', 'read': '{"action": "read", "userId": "1", "articleId": "14668", "algorithmCombine": "Algo-1"}'}}
                 ]
             }
             '''

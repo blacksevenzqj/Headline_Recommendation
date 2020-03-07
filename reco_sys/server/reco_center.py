@@ -49,6 +49,7 @@ def add_track(res, temp):
 
     # 准备曝光参数
     # 全部字符串形式提供，在hive端不会解析问题
+    # 埋点参数参考 中的 曝光参数："param": '{"action": "exposure", "userId": 1, "articleId": [1,2,3,4],  "algorithmCombine": "c1"}'
     _exposure = {"action": "exposure", "userId": temp.user_id, "articleId": json.dumps(res), "algorithmCombine": temp.algo}
 
     track['param'] = json.dumps(_exposure)
@@ -93,86 +94,86 @@ class RecoCenter(object):
         self.hbu = HBaseUtils(pool)
         self.recall_service = ReadRecall()
 
+    # 增加feed_recommend_logic函数，进行时间戳逻辑判断
     def feed_recommend_time_stamp_logic(self, temp):
         """
         用户刷新时间戳的逻辑
         :param temp: ABTest传入的用户请求参数
-        :return:
         """
         # 1、获取用户的历史数据库中最近一次时间戳last_stamp
-        # 如果用户没有历史记录
         try:
             last_stamp = self.hbu.get_table_row('history_recommend',
                                                 'reco:his:{}'.format(temp.user_id).encode(),
                                                 'channel:{}'.format(temp.channel_id).encode(),
-                                                include_timestamp=True)[1]
+                                                include_timestamp=True)[1] # 返回的是列表，[1]是时间戳
             logger.info("{} INFO get user_id:{} channel:{} history last_stamp".format(
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
-
         except Exception as e:
+            # 如果用户没有历史记录会报异常
             logger.info("{} INFO get user_id:{} channel:{} history last_stamp, exception:{}".format(
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id, e))
             last_stamp = 0
 
+        # 返回的 Track的time_stamp字段：上一条历史记录的时间戳（没有赋值为0）
         logger.info(str(last_stamp) + "___" + str(temp.time_stamp))
-        # Track的time_stamp字段：上一条历史记录的时间戳（没有赋值为0）
-        # 2、如果last_stamp < 用户请求时间戳, 用户的刷新操作
+
+        # 2、如果last_stamp < 用户请求时间戳：用户的刷新操作
         if last_stamp < temp.time_stamp:
-            # 走正常的推荐流程
-            # 缓存读取、召回排序流程
+            # 走正常的推荐流程：缓存读取 或 召回排序流程
             res = get_cache_from_redis_hbase(temp, self.hbu)
-            if not res:
+            if not res: # 缓存中没有，则：召回排序流程
                 logger.info("{} INFO cache is Null get user_id:{} channel:{} recall/sort data".format(
                     datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id, e))
                 res = self.user_reco_list(temp)
-            temp.time_stamp = last_stamp # last_stamp应该是temp.time_stamp前面一条数据，返回给用户上一条时间戳last_stamp
+            # 历史数据库中最近一次时间戳last_stamp 赋值给 temp.time_stamp 最后封装成 Track的time_stamp字段 返回给前端
+            temp.time_stamp = last_stamp
             _track = add_track(res, temp)
         else:
             # 3、如果last_stamp >= 用户请求时间戳, 用户才翻历史记录
-            # 根据用户传入的时间戳请求，去读取对应的历史记录
-            # temp.time_stamp
-            # 1559148615353,hbase取出1559148615353小的时间戳的数据， 1559148615354
+            '''
+            如果历史时间戳大于用户请求的这次时间戳，那么就是在获取历史记录，用户请求的历史时间戳是具体某个历史记录的时间戳T，
+            Hbase当中不能够直接用T去获取，而需要去（T + N=1）> T 的时间戳获取，才能拿到包含T时间的结果，并且使用get_table_cells去获取
+            '''
             logger.info("{} INFO read user_id:{} channel:{} history recommend data".format(
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
             try:
+                # 根据 用户传入的时间戳（需要 传入的时间戳 + 1） 使用get_table_cells去获取 <= 传入的时间戳 的所有历史数据。
                 row = self.hbu.get_table_cells('history_recommend',
                                                'reco:his:{}'.format(temp.user_id).encode(),
                                                'channel:{}'.format(temp.channel_id).encode(),
                                                timestamp=temp.time_stamp + 1,
                                                include_timestamp=True)
             except Exception as e:
+                # 如果用户没有历史记录会报异常
                 logger.warning("{} WARN read history recommend exception:{}".format(
                     datetime.now().strftime('%Y-%m-%d %H:%M:%S'), e))
                 row = []
                 res = []
 
-            # [(,), ()]
-            # 1559148615353, [15140, 16421, 19494, 14381, 17966]
-            # 1558236647437, [18904, 14300, 44412, 18238, 18103, 43986, 44339, 17454, 14899, 18335]
-            # 1558236629309, [43997, 14299, 17632, 17120]
-
-            # 3步判断逻辑
+            # 三步判断逻辑
             # 1、如果没有历史数据，返回时间戳0以及结果空列表
-            # 1558236629307
             if not row:
-                temp.time_stamp = 0
-                res = []
+                temp.time_stamp = 0 # temp.time_stamp 最后封装成 Track的time_stamp字段 返回给前端
+                res = [] # 推荐列表
             elif len(row) == 1 and row[0][1] == temp.time_stamp:
-                # [([43997, 14299, 17632, 17120], 1558236629309)]
                 # 2、如果历史数据只有一条，返回这一条历史数据以及时间戳正好为请求时间戳，修改时间戳为0，表示后面请求以后就没有历史数据了(APP的行为就是翻历史记录停止了)
                 res = row[0][0]
-                temp.time_stamp = 0
+                temp.time_stamp = 0 # temp.time_stamp 最后封装成 Track的time_stamp字段 返回给前端
             elif len(row) >= 2:
+                # 3、如果历史数据多条，返回最近的第一条历史数据，然后返回最近的第二条历史数据的时间戳（为下次翻历史记录做准备）
                 res = row[0][0]
-                temp.time_stamp = int(row[1][1])
-                # 3、如果历史数据多条，返回最近的第一条历史数据，然后返回之后第二条历史数据的时间戳
+                temp.time_stamp = int(row[1][1]) # temp.time_stamp 最后封装成 Track的time_stamp字段 返回给前端
 
-            # res bytes--->list
-            # list str---> int id
-            res = list(map(int, eval(res)))
+
+            # res(bytes) → eval(res) → list(str)
+            # list(str) → map(int, eval(res)) → list(int)
+            # 最外层再套list：list(map(int, eval(res))) 防止res为空时报异常
+            res = list(map(int, eval(res))) # 一条历史推荐结果（封装成列表）
             logger.info(
                 "{} INFO history:{}, {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), res, temp.time_stamp))
             _track = add_track(res, temp)
+            # 埋点参数参考 中的 曝光参数："param": '{"action": "exposure", "userId": 1, "articleId": [1,2,3,4],  "algorithmCombine": "c1"}'
+            # 返回历史记录时，曝光参数就置为 '' 了。
             _track['param'] = ''
 
         return _track

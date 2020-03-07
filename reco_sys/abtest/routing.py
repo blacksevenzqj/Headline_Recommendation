@@ -68,7 +68,8 @@ def feed_recommend(user_id, channel_id, article_num, time_stamp):
     return _track
 
 
-# 需自定义实现：
+# user_reco_pb2_grpc.UserRecommendServicer类 是根据自定义protoco协议：user_reco.proto 中的 service UserRecommend 定义的
+# 需重写 user_reco_pb2_grpc.UserRecommendServicer 中的 def user_recommend(self, request, context) 方法
 class UserRecommendServicer(user_reco_pb2_grpc.UserRecommendServicer):
     """grpc黑马推荐接口服务端逻辑写
     """
@@ -120,7 +121,7 @@ def serve():
 
     # 多线程服务器
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    # 注册本地服务
+    # 注册：重写的 自定义protoco协议 服务方法：
     user_reco_pb2_grpc.add_UserRecommendServicer_to_server(UserRecommendServicer(), server)
     # 监听端口
     server.add_insecure_port(DefaultConfig.RPC_SERVER)
