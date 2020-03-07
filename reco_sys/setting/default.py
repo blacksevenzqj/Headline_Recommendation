@@ -41,8 +41,8 @@ param = namedtuple('RecommendAlgorithm', ['COMBINE',
 
 RAParam = param(
     COMBINE={
-        'Algo-1': (1, [100, 101, 102, 103, 104], [200]),  # 算法集名称 : (序号, 召回结果数据集列表, 排序模型列表)
-        'Algo-2': (2, [100, 101, 102, 103, 104], [200])
+        'Algo-1': (1, [100, 101, 102, 103, 104], [200]),  # 算法集名称 : (序号, [召回结果数据集列表], [排序模型列表])
+        'Algo-2': (2, [100, 101, 102, 103, 104], [200])   # 目前为止不使用 105:文章相似度 直接查询 article_similar 的HBase表
     },
     RECALL={
         100: ('cb_recall', 'als'),  # 离线模型ALS召回，recall:user:1115629498121 column=als:18

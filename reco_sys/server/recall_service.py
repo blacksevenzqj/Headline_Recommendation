@@ -25,14 +25,15 @@ class ReadRecall(object):
 
     def read_hbase_recall_data(self, table_name, key_format, column_format):
         '''
-        获取指定用户的对应频道的召回结果：在线内容画像召回，离线内容画像召回，离线ALS协同过滤召回 都在HBASE的 cb_recall 表中
-        在 合并多路召回数据 做推荐准备时，从cb_recall表中拿取数据后，要进行删除。
+        获取指定用户的对应频道的召回结果：在线文章内容召回，离线文章内容召回，离线ALS协同过滤召回 都在 cb_recall 的HBase多版本过期时间表
+        在 合并多路召回数据 做推荐准备时：从cb_recall表中拿取数据后，要进行删除。
         '''
         reco_set = []
         try:
-            data = self.hbu.get_table_cells(table_name, key_format, column_format)
+            data = self.hbu.get_table_cells(table_name, key_format, column_format) # 取出多版本数据
             for _ in data:
-                reco_set = list(set(reco_set).union(set(eval(_))))
+                # HBase中存储的是bytes，所以需要调用eval()
+                reco_set = list(set(reco_set).union(set(eval(_)))) # 合并、去重
 
             # 删除召回结果（测试时 注释掉）
             self.hbu.get_table_delete(table_name, key_format, column_format)
@@ -44,7 +45,7 @@ class ReadRecall(object):
 
     def read_redis_new_article(self, channel_id):
         '''
-        读取用户的新文章
+        读取新文章召回结果
         '''
         logger.info("{} INFO read channel {} redis new article".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),channel_id))
         key = 'ch:{}:new'.format(channel_id)
@@ -59,7 +60,7 @@ class ReadRecall(object):
 
     def read_redis_hot_article(self, channel_id, hot_num=10):
         '''
-        读取新闻章召回结果
+        读取热门文章召回结果
         '''
         logger.info("{} INFO read channel {} redis hot article".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),channel_id))
         _key = "ch:{}:hot".format(channel_id)
@@ -102,6 +103,8 @@ class ReadRecall(object):
         return res
 
 
+
+# 测试：
 # if __name__ == '__main__':
 #     rr = ReadRecall()
 #     print("离线ALS模型召回" + str(rr.read_hbase_recall('cb_recall', b'recall:user:2', b'als:18')))

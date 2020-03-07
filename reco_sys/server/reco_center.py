@@ -182,18 +182,18 @@ class RecoCenter(object):
     def user_reco_list(self, temp):
         """
         用户下拉刷新获取新数据的逻辑
-        1、循环算法组合参数，遍历不同召回结果进行过滤
+        1、循环算法的召回集组合参数，合并多路召回结果集
         2、过滤当前该请求频道推荐历史结果，如果不是0频道需要过滤0频道推荐结果，防止出现
         3、过滤之后，推荐出去指定个数的文章列表，写入历史记录history_recommend，剩下的写入待推荐结果wait_recommend。
         """
         reco_set = []
-        # 1、循环算法组合参数，遍历不同召回结果进行过滤：
         '''
         COMBINE={
-            'Algo-1': (1, [100, 101, 102, 103, 104], []),  # 首页推荐，所有召回结果读取+LR排序
-            'Algo-2': (2, [100, 101, 102, 103, 104], [])  # 首页推荐，所有召回结果读取 排序
+            'Algo-1': (1, [100, 101, 102, 103, 104], [200]),  # 算法集名称 : (序号, [召回结果数据集列表], [排序模型列表])
+            'Algo-2': (2, [100, 101, 102, 103, 104], [200])   # 目前为止不使用 105:文章相似度 直接查询 article_similar 的HBase表
         }
         '''
+        # 1、循环算法的召回集组合参数，合并多路召回结果集
         for _num in RAParam.COMBINE[temp.algo][1]:
             # 进行每个召回结果的读取100,101,102,103,104
             if _num == 103:
@@ -205,13 +205,14 @@ class RecoCenter(object):
                 _res = self.recall_service.read_redis_hot_article(temp.channel_id)
                 reco_set = list(set(reco_set).union(set(_res))) # 合并召回的结果
             else:
-                # 离线模型ALS召回、离线word2vec的文章画像内容召回、在线word2vec的文章画像内容召回
+                # 离线模型ALS召回、离线文章内容召回、在线文章内容召回
                 _res = self.recall_service.read_hbase_recall_data(RAParam.RECALL[_num][0],
                                            'recall:user:{}'.format(temp.user_id).encode(),
                                            '{}:{}'.format(RAParam.RECALL[_num][1], temp.channel_id).encode())
                 reco_set = list(set(reco_set).union(set(_res)))  # 合并召回的结果
 
-        # 对合并的结果集 进行 history_recommend 过滤
+
+        # 对合并的 召回结果集 进行 history_recommend 过滤
         history_list = []
         try:
             # 所有版本
