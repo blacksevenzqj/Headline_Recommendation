@@ -27,7 +27,6 @@ test_file = "E:\\code\\python_workSpace\\idea_space\\toutiao_project\\reco_sys\\
 def input_func(file, epoches, batch_size):
     """
     解普查数据csv格式样本
-    :return:
     """
     def deal_with_csv(value):
         data = tf.decode_csv(value, record_defaults=_CSV_COLUMN_DEFAULTS) # list
@@ -40,7 +39,7 @@ def input_func(file, epoches, batch_size):
     # 1、读取美国普查收入数据
     # tensor的迭代，一行样本数据
     # 名称要制定
-    # 39,State-gov,77516,Bachelors,13,,Adm-clerical
+    # 39, State-gov, 77516,Bachelors, 13, , Adm-clerical
     dataset = tf.data.TextLineDataset(file) # DatasetV1Adapter 理解为Tensor迭代器
     print(dataset)
     dataset = dataset.map(deal_with_csv) # 只调用了一次，包含了feature_dict, classes
@@ -254,4 +253,4 @@ if __name__ == '__main__':
 
     # version2()
 
-    test()
+    # test()
