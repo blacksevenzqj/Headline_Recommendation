@@ -31,11 +31,11 @@ def get_cache_from_redis_hbase(temp, hbu, redis_cache_len=100):
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, e))
             hbase_cache = []
 
-        # 2.1、如果hbase_cache为Null，则直接返回 空列表[]
+        # 2.1、如果 wait_recommend的 HBase表存储数量 为Null，则直接返回 空列表[]
         if not hbase_cache:
             return hbase_cache
 
-        # 2.2、wait_recommend的 HBase表存储数量 > redis:8 中设置的存储数量（100）
+        # 2.2、如果 wait_recommend的 HBase表存储数量 > redis:8 中设置的存储数量（100）
         if len(hbase_cache) > redis_cache_len:
             logger.info(
                 "{} INFO reduce cache  user_id:{} channel:{} wait_recommend data".format(
@@ -45,7 +45,7 @@ def get_cache_from_redis_hbase(temp, hbu, redis_cache_len=100):
             redis_cache = hbase_cache[:redis_cache_len]
             cache_client.zadd(key, dict(zip(redis_cache, range(len(redis_cache)))))
 
-            # 2.2.2、剩下的数据重新放回到 wait_recommend 的HBase表。
+            # 2.2.2、剩下的数据重新放回到 wait_recommend 的HBase表
             hbu.get_table_put('wait_recommend',
                               'reco:{}'.format(temp.user_id).encode(),
                               'channel:{}'.format(temp.channel_id).encode(),
@@ -70,12 +70,12 @@ def get_cache_from_redis_hbase(temp, hbu, redis_cache_len=100):
         if res:
             cache_client.zrem(key, *res) # 删除取出的 请求指定个数article_num 数据
 
-    # 数据类型转换为int
+    # 从Redis取出的数据都为str类型，数据类型转换为int
     res = list(map(int, res))
     logger.info("{} INFO get cache data and store user_id:{} channel:{} cache data".format(
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
 
-    # 4、实际推荐出去的结果放入 历史推荐history_recommend 的HBase表（表示这次又成功推荐一次）
+    # 4、实际推荐出去的结果放入 历史推荐history_recommend 的HBase多版本过期时间表（表示这次又成功推荐一次）
     hbu.get_table_put('history_recommend',
                            'reco:his:{}'.format(temp.user_id).encode(),
                            'channel:{}'.format(temp.channel_id).encode(),
