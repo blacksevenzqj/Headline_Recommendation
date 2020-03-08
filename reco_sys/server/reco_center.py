@@ -119,11 +119,12 @@ class RecoCenter(object):
 
         # 2、如果last_stamp < 用户请求时间戳：用户的刷新操作
         if last_stamp < temp.time_stamp:
-            # 走正常的推荐流程：缓存读取 或 召回排序流程
+            # 2.1、走正常的推荐流程：缓存读取
             res = get_cache_from_redis_hbase(temp, self.hbu)
             if not res: # 缓存中没有，则：召回排序流程
                 logger.info("{} INFO cache is Null get user_id:{} channel:{} recall/sort data".format(
                     datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id, e))
+                # 2.2、走正常的推荐流程：召回排序流程
                 res = self.user_reco_list(temp)
             # 历史数据库中最近一次时间戳last_stamp 赋值给 temp.time_stamp 最后封装成 Track的time_stamp字段 返回给前端
             temp.time_stamp = last_stamp
@@ -150,7 +151,7 @@ class RecoCenter(object):
                 row = []
                 res = []
 
-            # 三步判断逻辑
+            # 历史推荐结果 三步判断逻辑：
             # 1、如果没有历史数据，返回时间戳0以及结果空列表
             if not row:
                 temp.time_stamp = 0 # temp.time_stamp 最后封装成 Track的time_stamp字段 返回给前端
@@ -183,8 +184,9 @@ class RecoCenter(object):
         """
         用户下拉刷新获取新数据的逻辑
         1、循环算法的召回集组合参数，合并多路召回结果集
-        2、过滤当前该请求频道推荐历史结果，如果不是0频道需要过滤0频道推荐结果，防止出现
-        3、过滤之后，推荐出去指定个数的文章列表，写入历史记录history_recommend，剩下的写入待推荐结果wait_recommend。
+        2.1、过滤当前该请求频道推荐历史结果（对合并的召回结果集进行history_recommend过滤）
+        2.2、如果0号频道（推荐频道）有历史推荐记录，也需要过滤
+        3、过滤之后，推荐出去指定个数的文章列表，写入历史记录history_recommend，剩下的写入待推荐结果wait_recommend
         """
         reco_set = []
         '''
@@ -212,7 +214,7 @@ class RecoCenter(object):
                 reco_set = list(set(reco_set).union(set(_res)))  # 合并召回的结果
 
 
-        # 对合并的 召回结果集 进行 history_recommend 过滤
+        # 2.1、过滤当前该请求频道推荐历史结果（对合并的召回结果集进行history_recommend过滤）
         history_list = []
         try:
             # 所有版本
@@ -228,7 +230,7 @@ class RecoCenter(object):
             logger.warning("{} WARN filter history article exception:{}".format(datetime.now().
                                                                      strftime('%Y-%m-%d %H:%M:%S'), e))
 
-        # 如果0号频道（推荐频道）有历史记录，也需要过滤
+        # 2.2、如果0号频道（推荐频道）有历史推荐记录，也需要过滤
         try:
             data = self.hbu.get_table_cells('history_recommend',
                                             'reco:his:{}'.format(temp.user_id).encode(),
@@ -249,6 +251,7 @@ class RecoCenter(object):
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'), reco_set))
 
 
+        # 3、过滤之后，推荐出去指定个数的文章列表，写入历史记录history_recommend，剩下的写入待推荐结果wait_recommend。
         # 如果没有数据，直接返回
         if not reco_set:
             return reco_set
@@ -260,31 +263,32 @@ class RecoCenter(object):
             # 类型进行转换
             reco_set = list(map(int, reco_set))
 
-            # 跟后端需要推荐的文章数量进行比对 article_num
-            # article_num > reco_set
+            # 跟请求需要推荐的文章数量article_num 进行比对
+            # 如果请求推荐文章数量article_num > 实际推荐文章总数量reco_set
             if len(reco_set) <= temp.article_num:
                 res = reco_set
             else:
-                # 截取要推荐的数量
-                res = reco_set[:temp.article_num]
-                # 剩下的推荐结果放入wait_recommend，等待下次刷新时直接推荐
+                # 如果请求推荐文章数量article_num < 实际推荐文章总数量reco_set
+                # 3.1、截取请求推荐文章数量
+                res = reco_set[:temp.article_num] # 左开右闭
+                # 3.2、剩下的实际推荐结果放入wait_recommend，等待下次刷新时直接推荐（len(reco_set) - article_num）
                 self.hbu.get_table_put('wait_recommend',
                                        'reco:{}'.format(temp.user_id).encode(),
                                        'channel:{}'.format(temp.channel_id).encode(),
-                                       str(reco_set[temp.article_num:]).encode(),
+                                       str(reco_set[temp.article_num:]).encode(), # 多出的实际推荐结果
                                        timestamp=temp.time_stamp)
                 logger.info(
                     "{} INFO put user_id:{} channel:{} wait data".format(
                         datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
 
 
-            # 放入历史记录表当中
+            # 将实际推荐出去的结果 放入历史记录表当中
             self.hbu.get_table_put('history_recommend',
                                    'reco:his:{}'.format(temp.user_id).encode(),
                                    'channel:{}'.format(temp.channel_id).encode(),
                                    str(res).encode(),
                                    timestamp=temp.time_stamp)
-            # 放入历史记录日志
+            # 将实际推荐出去的结果 放入历史记录日志
             logger.info(
                 "{} INFO store recall/sorted user_id:{} channel:{} history_recommend data".format(
                     datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))

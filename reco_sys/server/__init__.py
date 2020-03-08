@@ -23,7 +23,6 @@ cache_client = redis.StrictRedis(host=DefaultConfig.REDIS_HOST,
 
 
 
-
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 # spark配置
