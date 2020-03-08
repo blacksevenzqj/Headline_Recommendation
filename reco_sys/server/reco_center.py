@@ -251,8 +251,8 @@ class RecoCenter(object):
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'), reco_set))
 
 
-        # 3、过滤之后，推荐出去指定个数的文章列表，写入历史记录history_recommend，剩下的写入待推荐结果wait_recommend。
-        # 如果没有数据，直接返回
+        # 3、过滤之后，推荐出去指定个数的文章列表，写入历史记录history_recommend，剩下的写入待推荐结果wait_recommend
+        # 如果过滤之后没有数据，直接返回
         if not reco_set:
             return reco_set
         else:
@@ -266,6 +266,7 @@ class RecoCenter(object):
             # 跟请求需要推荐的文章数量article_num 进行比对
             # 如果请求推荐文章数量article_num > 实际推荐文章总数量reco_set
             if len(reco_set) <= temp.article_num:
+                # 按 实际推荐文章总数量reco_set 进行推荐
                 res = reco_set
             else:
                 # 如果请求推荐文章数量article_num < 实际推荐文章总数量reco_set

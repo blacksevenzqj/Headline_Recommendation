@@ -21,7 +21,7 @@ def get_cache_from_redis_hbase(temp, hbu, redis_cache_len=100):
         cache_client.zrem(key, *res)
     else:
         # 2、如果 redis:8 没有数据，进行wait_recommend读取，放入redis中
-        cache_client.delete(key)
+        cache_client.delete(key) # 删除 redis:8 相关Key
         try:
             hbase_cache = eval(hbu.get_table_row('wait_recommend',
                                                  'reco:{}'.format(temp.user_id).encode(),

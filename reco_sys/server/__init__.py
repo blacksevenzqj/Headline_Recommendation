@@ -23,6 +23,7 @@ cache_client = redis.StrictRedis(host=DefaultConfig.REDIS_HOST,
 
 
 
+# 在 sort_service.py 排序逻辑中使用
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 # spark配置
