@@ -19,7 +19,7 @@ import json
 logger = logging.getLogger('recommend')
 
 sort_dict = {
-    'LR': lr_sort_service,
+    'LR': lr_sort_service, # 定义方法映射
 }
 
 '''
@@ -256,7 +256,7 @@ class RecoCenter(object):
         if not reco_set:
             return reco_set
         else:
-            # 排序代码逻辑
+            # 3.1、排序代码逻辑
             _sort_num = RAParam.COMBINE[temp.algo][2][0] # 排序模型列表 中 索引出 排序模型编号
             reco_set = sort_dict[RAParam.SORT[_sort_num]](reco_set, temp, self.hbu)
 
@@ -264,15 +264,15 @@ class RecoCenter(object):
             reco_set = list(map(int, reco_set))
 
             # 跟请求需要推荐的文章数量article_num 进行比对
-            # 如果请求推荐文章数量article_num > 实际推荐文章总数量reco_set
+            # 3.2、如果请求推荐文章数量article_num > 实际推荐文章总数量reco_set
             if len(reco_set) <= temp.article_num:
                 # 按 实际推荐文章总数量reco_set 进行推荐
                 res = reco_set
             else:
-                # 如果请求推荐文章数量article_num < 实际推荐文章总数量reco_set
-                # 3.1、截取请求推荐文章数量
+                # 3.3、如果请求推荐文章数量article_num < 实际推荐文章总数量reco_set
+                # 3.3.1、截取请求推荐文章数量
                 res = reco_set[:temp.article_num] # 左开右闭
-                # 3.2、剩下的实际推荐结果放入wait_recommend，等待下次刷新时直接推荐（len(reco_set) - article_num）
+                # 3.3.2、剩下的实际推荐结果放入wait_recommend，等待下次刷新时直接推荐（len(reco_set) - article_num）
                 self.hbu.get_table_put('wait_recommend',
                                        'reco:{}'.format(temp.user_id).encode(),
                                        'channel:{}'.format(temp.channel_id).encode(),
@@ -283,7 +283,7 @@ class RecoCenter(object):
                         datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
 
 
-            # 将实际推荐出去的结果 放入历史记录表当中
+            # 4、将实际推荐出去的结果 放入历史记录表当中
             self.hbu.get_table_put('history_recommend',
                                    'reco:his:{}'.format(temp.user_id).encode(),
                                    'channel:{}'.format(temp.channel_id).encode(),
