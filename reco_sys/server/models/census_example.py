@@ -122,10 +122,11 @@ def get_feature_column_v2():
         'occupation', hash_bucket_size=1000)
     categorical_columns = [relationship, marital_status, workclass, occupation]
 
-    # 分桶
+    # 连续值分桶
     age_buckets = tf.feature_column.bucketized_column(
         age, boundaries=[18, 25, 30, 35, 40, 45, 50, 55, 60, 65])
-    # 交叉特征
+
+    # 交叉特征：如下相当于新增了 两列特征
     crossed_columns = [
         tf.feature_column.crossed_column(
             ['education', 'occupation'], hash_bucket_size=1000),
