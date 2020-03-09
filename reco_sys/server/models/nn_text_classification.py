@@ -62,7 +62,7 @@ if __name__ == '__main__':
         dataset = dataset.map(parser)
         dataset = dataset.repeat()
         print(dataset)
-        iterator = dataset.make_one_shot_iterator()
+        iterator = dataset.make_one_shot_iterator() #  无需返回迭代，直接返回dataset
         return iterator.get_next()
 
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
         dataset = dataset.batch(64)
         dataset = dataset.map(parser)
-        iterator = dataset.make_one_shot_iterator()
+        iterator = dataset.make_one_shot_iterator() #  无需返回迭代，直接返回dataset
         return iterator.get_next()
 
 
