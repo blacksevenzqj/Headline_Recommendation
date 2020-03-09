@@ -28,7 +28,7 @@ def get_train_test():
     (x_train_source, y_train), (x_test_source, y_test) = imdb.load_data(num_words=vocab_size)
 
     # 每个样本（评论）词的数量不是统一的，也就是样本的特征个数不统一，所以要固定序列（特征）长度，以序列长度最长的为准。
-    # 每个样本评论序列长度固定： 矩阵的 行数量为样本数量， 列数量为 maxlen； 每个元素的值（序号）是由 词库所决定。 
+    # 每个样本（评论）序列长度固定：矩阵的 行数量为样本数量， 列数量为 maxlen； 每个元素的值（序号）是由 词库所决定。
     x_train = keras.preprocessing.sequence.pad_sequences(x_train_source,
                                                          maxlen=max_sentence,
                                                          padding='post', value=0)

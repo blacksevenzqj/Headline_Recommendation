@@ -41,7 +41,7 @@ def input_func(file, epoches, batch_size):
     # 名称要制定
     # 39, State-gov, 77516,Bachelors, 13, , Adm-clerical
     dataset = tf.data.TextLineDataset(file) # DatasetV1Adapter 理解为Tensor迭代器
-    print(dataset)
+    print(dataset) # <TextLineDatasetV1 shapes: (), types: tf.string>
     dataset = dataset.map(deal_with_csv) # 只调用了一次，包含了feature_dict, classes
     print(dataset)
     dataset = dataset.repeat(epoches) # 训练时重复次数
@@ -52,7 +52,6 @@ def input_func(file, epoches, batch_size):
 def get_feature_column():
     """
     指定输入extimator中特征列类型
-    :return:
     """
     # 数值型特征
     age = tf.feature_column.numeric_column('age')
@@ -123,9 +122,10 @@ def get_feature_column_v2():
         'occupation', hash_bucket_size=1000)
     categorical_columns = [relationship, marital_status, workclass, occupation]
 
-    # 分桶，交叉特征
+    # 分桶
     age_buckets = tf.feature_column.bucketized_column(
         age, boundaries=[18, 25, 30, 35, 40, 45, 50, 55, 60, 65])
+    # 交叉特征
     crossed_columns = [
         tf.feature_column.crossed_column(
             ['education', 'occupation'], hash_bucket_size=1000),
@@ -147,51 +147,51 @@ def test():
     API测试
     :return:
     """
-    a = tf.random_normal([4, 10])
-    print(a.shape, a.shape.as_list()) # a.ndim错误API
-    print(a)
-    dataset1 = tf.data.Dataset.from_tensor_slices(a)
-    print(dataset1.output_shapes) # 取出的是一个Dataset
-    print(dataset1.output_types)
-    dataset1 = dataset1.shuffle(buffer_size=100)
-    dataset1 = dataset1.batch(2) # 一次取2行数据
-    dataset1 = dataset1.map(parser)
-    dataset1 = dataset1.repeat()
-    print(dataset1)
-    
-    iterator = dataset1.make_initializable_iterator()
-    next_element = iterator.get_next()
-    with tf.Session() as sess:
-        sess.run(iterator.initializer)
-        for i in range(2):
-            print(sess.run(next_element)) # 一次取2行数据，取了2次
-    
-    print("-"*30)
-    
-    
-    dataset2 = tf.data.Dataset.from_tensor_slices({"f": tf.random_normal([4, 10]),
-                                                    "l": tf.random_normal([4])})
-    print(dataset2.output_shapes) # 取出的是一个Dataset
-    print(dataset2.output_types)
-    print("-"*30)
-
-
-    dataset3 = tf.data.Dataset.range(100) # 给一个值
-    iterator = dataset3.make_one_shot_iterator() # 不常用 dataset3.make_initializable_iterator
-    example = iterator.get_next()
-    with tf.Session() as sess:
-        for i in range(10):
-            print(sess.run(example))
-    print("-"*30)
-    
-    
+    # a = tf.random_normal([4, 10])
+    # print(a.shape, a.shape.as_list()) # a.ndim错误API
+    # print(a)
+    # dataset1 = tf.data.Dataset.from_tensor_slices(a)
+    # print(dataset1.output_shapes) # 取出的是一个Dataset
+    # print(dataset1.output_types)
+    # dataset1 = dataset1.shuffle(buffer_size=100)
+    # dataset1 = dataset1.batch(2) # 一次取2行数据
+    # dataset1 = dataset1.map(parser)
+    # dataset1 = dataset1.repeat()
+    # print(dataset1)
+    #
+    # iterator = dataset1.make_initializable_iterator()
+    # next_element = iterator.get_next()
+    # with tf.Session() as sess:
+    #     sess.run(iterator.initializer)
+    #     for i in range(2):
+    #         print(sess.run(next_element)) # 一次取2行数据，取了2次
+    #
+    # print("-"*30)
+    #
+    #
+    # dataset2 = tf.data.Dataset.from_tensor_slices({"f": tf.random_normal([4, 10]),
+    #                                                 "l": tf.random_normal([4])})
+    # print(dataset2.output_shapes) # 取出的是一个Dataset
+    # print(dataset2.output_types)
+    # print("-"*30)
+    #
+    #
+    # dataset3 = tf.data.Dataset.range(100) # 给一个值
+    # iterator = dataset3.make_one_shot_iterator() # 不常用 dataset3.make_initializable_iterator
+    # example = iterator.get_next()
+    # with tf.Session() as sess:
+    #     for i in range(10):
+    #         print(sess.run(example))
+    # print("-"*30)
+    #
+    #
     features = {'SepalLength': np.array([6.4, 5.0]),
               'SepalWidth':  np.array([2.8, 2.3]),
               'PetalLength': np.array([5.6, 3.3]),
               'PetalWidth':  np.array([2.2, 1.0])}
-     
+
     labels = np.array([2, 1])
-    
+
     dataset = tf.data.Dataset.from_tensor_slices((features, labels))
     dataset = dataset.shuffle(1000).repeat().batch(2) # 一次取2行数据
     print(dataset)
@@ -253,4 +253,4 @@ if __name__ == '__main__':
 
     # version2()
 
-    # test()
+    test()
