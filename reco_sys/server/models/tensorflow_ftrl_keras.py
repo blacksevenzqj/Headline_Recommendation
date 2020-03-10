@@ -31,8 +31,8 @@ class LrWithFtrl(object):
         dataset = dataset.repeat(10000)
         return dataset
 
-    def train(self, dataset):
 
+    def train(self, dataset):
         self.model.compile(optimizer=tf.train.FtrlOptimizer(0.03, l1_regularization_strength=0.01,
                                                             l2_regularization_strength=0.01),
                            loss='binary_crossentropy',
@@ -40,6 +40,7 @@ class LrWithFtrl(object):
         self.model.fit(dataset, steps_per_epoch=10000, epochs=10)
         self.model.summary()
         self.model.save_weights('./ckpt/ctr_lr_ftrl.h5')
+
 
     def predict(self, inputs):
         """预测
@@ -78,7 +79,8 @@ def lrftrl_sort_service(reco_set, temp, hbu):
         user_feature = []
         logger.info("{} WARN get user user_id:{} channel:{} profile data failed".format(
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'), temp.user_id, temp.channel_id))
-    reco_set = [13295, 44020, 14335, 4402, 2, 14839, 44024, 18427, 43997, 17375]
+
+    reco_set = [13295, 44020, 14335, 4402, 2, 14839, 44024, 18427, 43997, 17375] # 召回集
     if user_feature and reco_set:
         # 2、读取文章特征中心特征
         result = []

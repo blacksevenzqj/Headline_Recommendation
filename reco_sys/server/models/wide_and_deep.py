@@ -13,6 +13,7 @@ class WDL(object):
     def __init__(self):
         pass
 
+
     @staticmethod
     def get_tfrecords_data():
 
@@ -56,20 +57,17 @@ class WDL(object):
         dataset = dataset.repeat(10)
         return dataset
 
-    def train_eval(self):
-        """
-        进行训练pnggu
-        :return:
-        """
 
+    def train_eval(self):
         # 指定wide和deep两边的feature_column
-        # wide, channel_id如果就是一个类别具体的数字
+
+        # wide侧：channel_id如果就是一个类别具体的数字
         # num_buckets必须填写
         channel_id = tf.feature_column.categorical_column_with_identity('channel_id', num_buckets=25)
 
         wide_columns = [channel_id]
 
-        # deep ID必须embedding结果，数值型列
+        # deep侧：ID必须embedding结果，数值型列
         # tf.feature_column.embedding_column()或则input_layer
         vector = tf.feature_column.numeric_column('vector')
         user_weights = tf.feature_column.numeric_column('user_weights')
@@ -92,6 +90,7 @@ class WDL(object):
         feature_spec = tf.feature_column.make_parse_example_spec(columns)
         serving_input_receiver_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec)
         model.export_savedmodel("./serving_model/wdl/", serving_input_receiver_fn)
+
 
 
 if __name__ == '__main__':
