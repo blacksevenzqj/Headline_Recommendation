@@ -11,7 +11,7 @@ from server.utils import HBaseUtils
 from server import pool
 from server.recall_service import ReadRecall
 from server.redis_cache import get_cache_from_redis_hbase
-from server.sort_service import lr_sort_service
+from server.sort_service import lr_sort_service, wdl_sort_service
 from datetime import datetime
 import logging
 import json
@@ -20,6 +20,7 @@ logger = logging.getLogger('recommend')
 
 sort_dict = {
     'LR': lr_sort_service, # 定义方法映射
+    'WDL': wdl_sort_service # 定义方法映射
 }
 
 '''
@@ -256,7 +257,7 @@ class RecoCenter(object):
         if not reco_set:
             return reco_set
         else:
-            # 3.1、排序代码逻辑
+            # 3.1、排序代码逻辑（Spark的LR模型、TensorFlow的Wide&Deep模型）
             _sort_num = RAParam.COMBINE[temp.algo][2][0] # 排序模型列表 中 索引出 排序模型编号
             reco_set = sort_dict[RAParam.SORT[_sort_num]](reco_set, temp, self.hbu)
 

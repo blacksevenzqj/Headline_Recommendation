@@ -36,10 +36,11 @@ class WDL(object):
             feature = tf.reshape(tf.cast(f, tf.float32), [1, 121])
 
             # 计算其中向量、用户权重、文章权重的平均值
-            channel_id = tf.cast(tf.slice(feature, [0, 0], [1, 1]), tf.int32)
-            vector = tf.reduce_sum(tf.slice(feature, [0, 1], [1, 100]), axis=1)
-            user_weights = tf.reduce_sum(tf.slice(feature, [0, 101], [1, 10]), axis=1)
-            article_weights = tf.reduce_sum(tf.slice(feature, [0, 111], [1, 10]), axis=1)
+            # tf.slice(feature, 起始元素[行索引, 列索引], [行轴抽取行数量, 列轴抽取列数量])
+            channel_id = tf.cast(tf.slice(feature, [0, 0], [1, 1]), tf.int32) # 0行0列元素开始，行轴抽一行，列轴抽一列
+            vector = tf.reduce_sum(tf.slice(feature, [0, 1], [1, 100]), axis=1) # 0行1列元素开始，行轴抽一行，列轴抽100列
+            user_weights = tf.reduce_sum(tf.slice(feature, [0, 101], [1, 10]), axis=1) # 0行101列元素开始，行轴抽一行，列轴抽10列
+            article_weights = tf.reduce_sum(tf.slice(feature, [0, 111], [1, 10]), axis=1) # 0行111列元素开始，行轴抽一行，列轴抽10列
 
             # 4个特征值进行名称构造字典
             data = [channel_id, vector, user_weights, article_weights]
@@ -61,18 +62,14 @@ class WDL(object):
     def train_eval(self):
         # 指定wide和deep两边的feature_column
 
-        # wide侧：channel_id如果就是一个类别具体的数字
-        # num_buckets必须填写
+        # wide侧：channel_id如果就是一个类别具体的数字（num_buckets必须填写）
         channel_id = tf.feature_column.categorical_column_with_identity('channel_id', num_buckets=25)
-
         wide_columns = [channel_id]
 
-        # deep侧：ID必须embedding结果，数值型列
-        # tf.feature_column.embedding_column()或则input_layer
+        # deep侧：ID必须embedding结果，数值型列（tf.feature_column.embedding_column()或则input_layer）
         vector = tf.feature_column.numeric_column('vector')
         user_weights = tf.feature_column.numeric_column('user_weights')
         article_weights = tf.feature_column.numeric_column('article_weights')
-
         deep_columns = [tf.feature_column.embedding_column(channel_id, dimension=25),
                         vector, user_weights, article_weights]
 
@@ -85,15 +82,15 @@ class WDL(object):
         # result = model.evaluate(WDL.get_tfrecords_data)
         # print(result)
 
-        # 模型导入
+        # 模型训练好之后，模型以SavedModel格式导出：
         columns = wide_columns + deep_columns
-        feature_spec = tf.feature_column.make_parse_example_spec(columns)
-        serving_input_receiver_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec)
-        model.export_savedmodel("./serving_model/wdl/", serving_input_receiver_fn)
+        feature_spec = tf.feature_column.make_parse_example_spec(columns) # 必须1
+        serving_input_receiver_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec) # 必须2
+        model.export_savedmodel("./serving_model/wdl/", serving_input_receiver_fn) # SavedModel格式导出模型保存目录 自动以时间戳格式目录保存
 
 
 
 if __name__ == '__main__':
-   wdl =  WDL()
+   wdl = WDL()
    # print(lw.get_tfrecords_data())
    wdl.train_eval()
